@@ -1,3 +1,4 @@
+import json
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from azure.storage.blob import BlobServiceClient, generate_blob_sas, BlobSasPermissions, ContentSettings
@@ -104,30 +105,41 @@ def onlyoffice_config():
 @app.route("/save/<filename>", methods=["POST"])
 def save_file(filename):
     data = request.json
-    logging.info("Callback received:\n" + json.dumps(data, indent=2))
+    logging.info("Callback data:\n" + json.dumps(data, indent=2))
+
     status = data.get("status")
 
     if status == 2:
-        download_uri = data["url"]
-        logging.info(download_uri)
+        # Proceed with file download and upload as before
+        try:
+            download_uri = data["url"]
+            r = requests.get(download_uri)
+            r.raise_for_status()
+        except Exception as e:
+            logging.error(f"Failed to download file: {e}")
+            return jsonify({"error": 1})
 
-        # Download the edited file content
-        r = requests.get(download_uri)
         file_bytes = r.content
 
-        # Upload it back to Azure Blob Storage
-        container_client = blob_service_client.get_container_client(AZURE_CONTAINER_NAME)
-        blob_client = container_client.get_blob_client(filename)
+        try:
+            container_client = blob_service_client.get_container_client(AZURE_CONTAINER_NAME)
+            blob_client = container_client.get_blob_client(filename)
+            blob_client.upload_blob(
+                file_bytes,
+                overwrite=True,
+                content_settings=ContentSettings(
+                    content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                )
+            )
+        except Exception as e:
+            logging.error(f"Error uploading to blob: {e}")
+            return jsonify({"error": 1})
 
-        blob_client.upload_blob(
-            file_bytes,
-            overwrite=True,
-            content_settings=ContentSettings(content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
-        )
+        return jsonify({"error": 0})
 
-        return jsonify({"error": 0})  # success
-
-    return jsonify({"error": 1})  # not ready
+    # Gracefully handle other statuses like 1, 3, 4, 6, etc.
+    logging.info(f"Received status {status}, no action required.")
+    return jsonify({"error": 0})
 
 if __name__ == '__main__':
     print("bkc")
