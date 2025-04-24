@@ -5,7 +5,7 @@ services:
     build:
       context: ./client
     ports:
-      - "3000:3000"
+      - "5173:5173"
     # depends_on:
     #   - backend
 
@@ -13,7 +13,7 @@ services:
     build: ./backend
     command: python app.py
     ports:
-      - "5000:5000"
+      - "6006:6006"
     volumes:
       - ./backend/uploaded_files:/app/uploaded_files
     depends_on:
@@ -23,7 +23,7 @@ services:
     image: onlyoffice/documentserver:8.3.3
     container_name: onlyoffice
     ports:
-      - "8000:80"  # Exposes container's port 80 as 8000 on your machine
+      - "8000:8000"  # Exposes container's port 80 as 8000 on your machine
     stdin_open: true
     tty: true
     environment:
