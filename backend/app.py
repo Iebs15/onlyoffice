@@ -104,7 +104,7 @@ def onlyoffice_config():
 @app.route("/save/<filename>", methods=["POST"])
 def save_file(filename):
     data = request.json
-    logging.info(data)
+    logging.info("Callback received:\n" + json.dumps(data, indent=2))
     status = data.get("status")
 
     if status == 2:
