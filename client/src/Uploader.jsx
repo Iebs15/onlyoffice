@@ -3,6 +3,7 @@ import Editor from "./DocumentEditor";
 
 const Uploader = () => {
   const [filename, setFilename] = useState(null);
+  const [fileURL, setFileURL]= useState(null);
 
   const handleUpload = async (e) => {
     const file = e.target.files[0];
@@ -27,6 +28,7 @@ const Uploader = () => {
       }
 
       setFilename(data.filename);
+      setFileURL(data.file_url);
     } catch (err) {
       console.error(err);
       alert("Upload failed.");
@@ -51,7 +53,7 @@ const Uploader = () => {
           <input type="file" accept=".docx" onChange={handleUpload} />
         </div>
       ) : (
-        <Editor filename={filename} />
+        <Editor filename={filename} fileurl={fileURL}/>
       )}
     </div>
   );
