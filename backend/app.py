@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import os
 import requests
 import logging
+import uuid
 
 
 from dotenv import load_dotenv
@@ -61,11 +62,14 @@ def generate_sas_url(blob_name):
 @app.route("/upload", methods=["POST"])
 def upload_file():
     file = request.files['file']
+    original_filename = file.filename.rsplit('.', 1)[0]
+    unique_id = str(uuid.uuid4())
+    new_filename = f"{original_filename}_{unique_id}.docx"
     logging.info("Initiated")
     if not file.filename.endswith('.docx'):
         return jsonify({"error": "Invalid file"}), 400
     container_client = blob_service_client.get_container_client(os.getenv("AZURE_CONTAINER_NAME"))
-    blob_client = container_client.get_blob_client(file.filename)
+    blob_client = container_client.get_blob_client(new_filename)
     logging.info(blob_client)
 
     # Save with correct content-type
@@ -76,11 +80,11 @@ def upload_file():
     )
 
     # Generate SAS URL (assuming you already have the logic for that)
-    sas_url = generate_sas_url(file.filename)
+    sas_url = generate_sas_url(new_filename)
     logging.info(sas_url)
 
     return jsonify({
-        "filename": file.filename,
+        "filename": new_filename,
         "file_url": sas_url
     })
 
@@ -93,8 +97,7 @@ def serve_file(filename):
 def onlyoffice_config():
     data = request.json
     filename = data['filename']
-
-    file_url = generate_sas_url(filename)  # SAS for viewing/editing
+    file_url = data['file_url'] # SAS for viewing/editing
 
     config = {
         "document": {
@@ -155,4 +158,3 @@ def save_file(filename):
 if __name__ == '__main__':
     print("bkc")
     app.run(host="0.0.0.0", port=6006)
-    
