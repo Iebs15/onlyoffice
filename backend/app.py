@@ -6,8 +6,8 @@ from datetime import datetime, timedelta
 import os
 import requests
 import logging
-from logging.handlers import RotatingFileHandler
-import uuid
+
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -16,30 +16,19 @@ load_dotenv()
 app = Flask(__name__, static_folder="uploaded_files")
 CORS(app)
 
+log_file_path = os.path.join(os.path.dirname(__file__), "app.log")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        logging.FileHandler(log_file_path),
+        logging.StreamHandler()  # Optional: also logs to console
+    ]
+)
+
 # Azure Storage setup
 UPLOAD_FOLDER = 'uploaded_files'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-if not os.path.exists('logs'):
-    os.mkdir('logs')
-
-# Configure logging
-log_handler = RotatingFileHandler('logs/app.log', maxBytes=5 * 1024 * 1024, backupCount=5)  # 5MB log, 5 backups
-log_handler.setLevel(logging.INFO)
-
-# Log format
-formatter = logging.Formatter(
-    '%(asctime)s - %(levelname)s - %(message)s'
-)
-log_handler.setFormatter(formatter)
-
-# Add handler to the Flask app logger
-app.logger.addHandler(log_handler)
-app.logger.setLevel(logging.INFO)
-
-# Optional: Redirect other logging calls (logging.info) to Flask app logger
-logging.getLogger().addHandler(log_handler)
-logging.getLogger().setLevel(logging.INFO)
 
 # Environment variables for Azure
 AZURE_STORAGE_CONNECTION_STRING = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
@@ -73,37 +62,28 @@ def generate_sas_url(blob_name):
 def upload_file():
     file = request.files['file']
     logging.info("Initiated")
-
     if not file.filename.endswith('.docx'):
         return jsonify({"error": "Invalid file"}), 400
-
-    # Generate unique filename
-    original_filename = file.filename.rsplit('.', 1)[0]
-    unique_id = str(uuid.uuid4())
-    new_filename = f"{original_filename}_{unique_id}.docx"
-
-    # Get blob client
     container_client = blob_service_client.get_container_client(os.getenv("AZURE_CONTAINER_NAME"))
-    blob_client = container_client.get_blob_client(new_filename)
+    blob_client = container_client.get_blob_client(file.filename)
     logging.info(blob_client)
 
-    # Upload with correct content-type
+    # Save with correct content-type
     blob_client.upload_blob(
         file,
         overwrite=True,
-        content_settings=ContentSettings(
-            content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        )
+        content_settings=ContentSettings(content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
     )
 
-    # Generate SAS URL (assumes `generate_sas_url()` works with new_filename)
-    sas_url = generate_sas_url(new_filename)
+    # Generate SAS URL (assuming you already have the logic for that)
+    sas_url = generate_sas_url(file.filename)
     logging.info(sas_url)
 
     return jsonify({
-        "filename": new_filename,
+        "filename": file.filename,
         "file_url": sas_url
     })
+
 @app.route("/files/<filename>")
 def serve_file(filename):
     # Serve the file from the local upload directory (you might need to adapt this part based on your requirement)
@@ -113,7 +93,9 @@ def serve_file(filename):
 def onlyoffice_config():
     data = request.json
     filename = data['filename']
-    file_url = data['file_url']
+
+    file_url = generate_sas_url(filename)  # SAS for viewing/editing
+
     config = {
         "document": {
             "fileType": "docx",
@@ -134,9 +116,12 @@ def onlyoffice_config():
 def save_file(filename):
     data = request.json
     logging.info("Callback data:\n" + json.dumps(data, indent=2))
+    print("Callback data:\n" + json.dumps(data, indent=2))
+
     status = data.get("status")
 
     if status == 2:
+        # Proceed with file download and upload as before
         try:
             download_uri = data["url"]
             r = requests.get(download_uri)
@@ -150,8 +135,6 @@ def save_file(filename):
         try:
             container_client = blob_service_client.get_container_client(AZURE_CONTAINER_NAME)
             blob_client = container_client.get_blob_client(filename)
-
-            # Upload and overwrite
             blob_client.upload_blob(
                 file_bytes,
                 overwrite=True,
@@ -159,23 +142,17 @@ def save_file(filename):
                     content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 )
             )
-
-            # Generate a new SAS URL
-            file_url = generate_sas_url(filename)
-
-            return jsonify({
-                "error": 0,
-                "message": "File saved and uploaded successfully.",
-                "file_url": file_url,
-                "location": f"{AZURE_CONTAINER_NAME}/{filename}"
-            })
-
         except Exception as e:
             logging.error(f"Error uploading to blob: {e}")
             return jsonify({"error": 1})
 
+        return jsonify({"error": 0})
+
+    # Gracefully handle other statuses like 1, 3, 4, 6, etc.
     logging.info(f"Received status {status}, no action required.")
     return jsonify({"error": 0})
+
 if __name__ == '__main__':
     print("bkc")
     app.run(host="0.0.0.0", port=6006)
+    
