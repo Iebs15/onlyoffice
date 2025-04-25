@@ -110,6 +110,10 @@ def onlyoffice_config():
         "editorConfig": {
             "user": { "id": "u1", "name": "Test User" },
             "callbackUrl": f"{BACKEND_URL}/save/{filename}"
+            "autosave": true,
+            "customization": {
+                "forcesave": true
+            }
         }
     }
     return jsonify(config)
@@ -122,11 +126,15 @@ def save_file(filename):
     print("Callback data:\n" + json.dumps(data, indent=2))
 
     status = data.get("status")
+    download_uri = data.get("url")
+
+    if not download_uri:
+        logging.error("No URL provided in the callback data.")
+        return jsonify({"error": 1})
 
     if status == 2:
-        # Proceed with file download and upload as before
+        logging.info(f"Autosave triggered for {filename}. Proceeding with file download and upload.")
         try:
-            download_uri = data["url"]
             r = requests.get(download_uri)
             r.raise_for_status()
         except Exception as e:
@@ -151,7 +159,34 @@ def save_file(filename):
 
         return jsonify({"error": 0})
 
-    # Gracefully handle other statuses like 1, 3, 4, 6, etc.
+    elif status == 6:
+        logging.info(f"Manual save triggered for {filename}. Proceeding with file download and upload.")
+        try:
+            r = requests.get(download_uri)
+            r.raise_for_status()
+        except Exception as e:
+            logging.error(f"Failed to download file: {e}")
+            return jsonify({"error": 1})
+
+        file_bytes = r.content
+
+        try:
+            container_client = blob_service_client.get_container_client(AZURE_CONTAINER_NAME)
+            blob_client = container_client.get_blob_client(filename)
+            blob_client.upload_blob(
+                file_bytes,
+                overwrite=True,
+                content_settings=ContentSettings(
+                    content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                )
+            )
+        except Exception as e:
+            logging.error(f"Error uploading to blob: {e}")
+            return jsonify({"error": 1})
+
+        return jsonify({"error": 0})
+
+    # Gracefully handle other statuses like 1, 3, 4, etc.
     logging.info(f"Received status {status}, no action required.")
     return jsonify({"error": 0})
 
