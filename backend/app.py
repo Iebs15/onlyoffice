@@ -109,7 +109,7 @@ def onlyoffice_config():
         "documentType": "word",
         "editorConfig": {
             "user": { "id": "u1", "name": "Test User" },
-            "callbackUrl": f"{BACKEND_URL}/save/{filename}"
+            "callbackUrl": f"{BACKEND_URL}/save/{filename}",
             "autosave": true,
             "customization": {
                 "forcesave": true
