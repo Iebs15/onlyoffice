@@ -113,9 +113,9 @@ def onlyoffice_config():
             "customization": {
                 "autosave": True,
                 "logo": {
-                    "image": "https://ibb.co/Zp31xBZn",
-                    "imageDark": "https://ibb.co/Zp31xBZn",
-                    "imageLight": "https://ibb.co/Zp31xBZn",
+                    "image": "https://i.ibb.co/4ncgp8Q6/image.png",
+                    "imageDark": "https://i.ibb.co/4ncgp8Q6/image.png",
+                    "imageLight": "https://i.ibb.co/4ncgp8Q6/image.png",
                     "url": "http://20.109.20.242:4000/dashboard",
                     "visible": True,
                 },
