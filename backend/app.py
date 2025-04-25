@@ -107,18 +107,18 @@ def onlyoffice_config():
             "url": file_url,
         },
         "documentType": "word",
-        "logo": {
-            "image": "https://ibb.co/Zp31xBZn",
-            "imageDark": "https://ibb.co/Zp31xBZn",
-            "imageLight": "https://ibb.co/Zp31xBZn",
-            "url": "http://20.109.20.242:4000/dashboard",
-            "visible": True,
-        },
         "editorConfig": {
             "user": { "id": "u1", "name": "Test User" },
             "callbackUrl": f"{BACKEND_URL}/save/{filename}",
-            "autosave": True,
             "customization": {
+                "autosave": True,
+                "logo": {
+                    "image": "https://ibb.co/Zp31xBZn",
+                    "imageDark": "https://ibb.co/Zp31xBZn",
+                    "imageLight": "https://ibb.co/Zp31xBZn",
+                    "url": "http://20.109.20.242:4000/dashboard",
+                    "visible": True,
+                },
                 "forcesave": True
             }
         }
