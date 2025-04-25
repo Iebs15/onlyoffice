@@ -110,9 +110,9 @@ def onlyoffice_config():
         "editorConfig": {
             "user": { "id": "u1", "name": "Test User" },
             "callbackUrl": f"{BACKEND_URL}/save/{filename}",
-            "autosave": true,
+            "autosave": True,
             "customization": {
-                "forcesave": true
+                "forcesave": True
             }
         }
     }
